@@ -1,7 +1,37 @@
 # Spring-boot + ELK
 
+## Endpoint usati nel tutorial
+
 - Kibana: http://localhost:5601
-- Hello: http://localhost:8080/hello
+- Hello (microservice): http://localhost:8080/hello
+
+## Esecuzione
+
+**Step 1:** Lanciare il container con tutto lo stack ELK:
+
+```text
+chmod +x run.sh
+./run.sh
+```
+
+La cartella `/etc/logstash/conf.d` verrà sostituita con la cartella `elk/conf.d` per la configurazione della pipeline di logstash.
+
+Il container espone 3 porte (bind su localhost):
+- `5601` Kibana web interface
+- `9200` Elasticsearch JSON interface
+- `5044` Logstash: interfaccia TCP per riceve i log in formato json.
+
+**Step 2:** Compilare ed eseguire il microservizio:
+```text
+mvn spring-boot:run
+```
+
+**Step 3:** Accedere all *hello* endpoint per generare dei log:
+```text
+curl localhost:8080/hello
+```
+
+**Step 4:** Accedere a Kibana per configurare l'accesso e la visualizzazione dei log: http://localhost:5601
 
 ## Riferimenti
 - TL;DR: https://stackoverflow.com/questions/55634857/how-does-filebeats-get-invoked-when-using-logstash-in-this-java-spring-boot-app
