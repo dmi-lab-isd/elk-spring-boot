@@ -17,6 +17,17 @@ chmod +x run.sh
 
 La cartella `/etc/logstash/conf.d` verrà sostituita con la cartella `elk/conf.d` per la configurazione della pipeline di logstash.
 
+Il container viene creato in `run.sh` usando il seguente comando:
+
+```bash
+docker run \
+	-p 5601:5601 \
+	-p 9200:9200 \
+	-p 5044:5044 \
+	-v "$(pwd)"/conf.d:/etc/logstash/conf.d:ro \
+	-d --name elk sebp/elk
+```
+
 Il container espone 3 porte (bind su localhost):
 - `5601` Kibana web interface
 - `9200` Elasticsearch JSON interface
