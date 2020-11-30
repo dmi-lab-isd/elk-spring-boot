@@ -10,6 +10,7 @@
 **Step 1:** Lanciare il container con tutto lo stack ELK:
 
 ```text
+cd elk
 chmod +x run.sh
 ./run.sh
 ```
