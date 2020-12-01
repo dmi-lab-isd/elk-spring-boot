@@ -1,5 +1,60 @@
 # Spring-boot + ELK
 
+In questo tutorial verrà mostrato come poter inviare dei log di un microservizio Spring-boot a Logstash, per poter poi visualizzarli nella dashboard di Kibana.
+
+## Possibili soluzioni
+
+Tipicamente usato per aggregare e processare log da inviare al databse di Elasticsearch, Logstash permette in realtà di definire delle pipeline di manipolazione di varie tipologie di dati.
+
+Uno degli strumenti più usati per inviare dati a Logstash è Beat, un servizio, o meglio, una famiglia si servizi (agenti) che vengono affiancati ad altri servizi di produzione dati per inviarli a Logstash. 
+
+Filebeat è l'agente che viene usato per inviare il contenuto di file testuali (come i log).
+
+### Soluzione 1: Due container, unico POD (sidecar pattern)
+
+![soluzione con pod](docs/img1_pod.png)
+
+Filebeat può essere eseguito all'interno di un container separato, distribuito assieme (accanto, come appunto un *sidecar*) al container del microservizio, facendo in modo che entrambi condividano un volume dove risiedono i log.
+
+Kubernetes permette di facilitare questo pattern, inserendo entrambi i container all'interno di una stessa unità indivisibile, chiamata POD, assieme alle risorse condivise, come i volumi.
+
+I log vengono vengono scritti dal microservizio in un file sul volume, e filebeat individua gli aggiornamenti nel file e li invia ad un endpoint di Logstash (`5044`) tramite un proprio protocollo (*beats*):
+
+```text
+input {
+	beats {
+		port => 5044
+	}
+}
+```
+
+### Soluzione 2: Singolo container con agente
+
+![soluzione con pod](docs/img2_container.png)
+
+Se non si ha il supporto ai pod, ed in presenza di più microservizi, fare in modo che ognuo di questi abbia associato il suo sidecar con filebeat potrebbe essere difficoltoso.
+
+Un'alternativa è installare ed eseguire filebeat direttamente nel contaienr del microservizio. In questo caso i log dovranno sempre essere scritti in un file, ma la condivisione può essere ottenuta direttamente dal filesystem (layer) del container. Le modalità di invio dei log a Logstash rimangono le stesse. 
+
+### Soluzione 3 (quella adottata): Invio log diretto dal microservizio (logback)
+
+![soluzione con pod](docs/img3_logback.png)
+
+Per la gestione dei log Spring-boot si affida alla libreria *logback*. Questa permette di configurare diversi aspetti legati al logging, ad esempio il livello di logging da adottare, se considerare o meno anche i log provenienti dalle librerie esterne, e dove inviare i log.
+
+Invece di inviarli solo su STDOUT o un file, possono essere aggiunti degli *appender* come il `logstash-logback-encoder`: questo permette di inviare i log in formato JSON a Logstash (sia in modalità TCP che UDP). Logstash dovrà quindi essere configurato per esporre un endpoint (su `5044`) a cui inviare log tu TCP in fomrato JSON:
+
+```text
+input {
+	tcp {
+		port => 5044
+		codec => json_lines
+	}
+}
+```
+
+**Nel tutorial verrà usata questa soluzione**
+
 ## Endpoint usati nel tutorial
 
 - Kibana: http://localhost:5601
