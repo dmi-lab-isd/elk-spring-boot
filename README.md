@@ -4,21 +4,19 @@ In questo tutorial verrà mostrato come poter inviare dei log di un microservizi
 
 ## Possibili soluzioni
 
-Tipicamente usato per aggregare e processare log da inviare al databse di Elasticsearch, Logstash permette in realtà di definire delle pipeline di manipolazione di varie tipologie di dati.
+Logstash, anche se tipicamente usato per aggregare e processare log da inviare al database di Elasticsearch, permette in realtà di definire delle *pipeline* di manipolazione per varie tipologie di dati.
 
-Uno degli strumenti più usati per inviare dati a Logstash è Beat, un servizio, o meglio, una famiglia si servizi (agenti) che vengono affiancati ad altri servizi di produzione dati per inviarli a Logstash. 
-
-Filebeat è l'agente che viene usato per inviare il contenuto di file testuali (come i log).
+Uno degli strumenti più usati per inviare dati a Logstash è Beat, un servizio, o meglio, una famiglia si servizi (agenti) che vengono affiancati ad altri servizi per inviare i dati prodotti a Logstash. *Filebeat* è l'agente che viene usato per inviare dati testuali (come i log).
 
 ### Soluzione 1: Due container, unico POD (sidecar pattern)
 
 ![soluzione con pod](docs/img1_pod.png)
 
-Filebeat può essere eseguito all'interno di un container separato, distribuito assieme (accanto, come appunto un *sidecar*) al container del microservizio, facendo in modo che entrambi condividano un volume dove risiedono i log.
+Filebeat può essere eseguito all'interno di un container separato, distribuito assieme al container del microservizio (accanto, come un *sidecar*), facendo in modo che entrambi condividano un volume dove risiedono i log. I due container viaggeranno sempre assieme, e condivideranno sempre lo stesso host.
 
-Kubernetes permette di facilitare questo pattern, inserendo entrambi i container all'interno di una stessa unità indivisibile, chiamata POD, assieme alle risorse condivise, come i volumi.
+Kubernetes permette di facilitare questo pattern, inserendo entrambi i container all'interno di una stessa unità indivisibile, chiamata POD, assieme a risorse condivise come i volumi.
 
-I log vengono vengono scritti dal microservizio in un file sul volume, e filebeat individua gli aggiornamenti nel file e li invia ad un endpoint di Logstash (`5044`) tramite un proprio protocollo (*beats*):
+I log vengono vengono scritti dal microservizio in un file sul volume, e filebeat individua gli aggiornamenti in coda al file e li invia ad un endpoint di Logstash (`5044`) tramite un proprio protocollo (*beats*). Questo è un esempio di configurazione minimale per l'input di Logstash:
 
 ```text
 input {
@@ -34,15 +32,15 @@ input {
 
 Se non si ha il supporto ai pod, ed in presenza di più microservizi, fare in modo che ognuo di questi abbia associato il suo sidecar con filebeat potrebbe essere difficoltoso.
 
-Un'alternativa è installare ed eseguire filebeat direttamente nel contaienr del microservizio. In questo caso i log dovranno sempre essere scritti in un file, ma la condivisione può essere ottenuta direttamente dal filesystem (layer) del container. Le modalità di invio dei log a Logstash rimangono le stesse. 
+Un'alternativa è installare ed eseguire filebeat direttamente nel contaienr del microservizio. In questo caso i log dovranno sempre essere scritti in un file, ma la condivisione può essere ottenuta direttamente tramite il filesystem (layer) del container. Le modalità di invio dei log e la configurazione di Logstash rimangono inalterati rispetto al caso precedente. 
 
 ### Soluzione 3 (quella adottata): Invio log diretto dal microservizio (logback)
 
 ![soluzione con pod](docs/img3_logback.png)
 
-Per la gestione dei log Spring-boot si affida alla libreria *logback*. Questa permette di configurare diversi aspetti legati al logging, ad esempio il livello di logging da adottare, se considerare o meno anche i log provenienti dalle librerie esterne, e dove inviare i log.
+Per la gestione dei log, Spring-boot si affida alla libreria *logback*. Questa permette di configurare diversi aspetti legati al logging, ad esempio il livello di logging da adottare, se considerare o meno anche i log provenienti dalle librerie esterne, o dove inviare i log.
 
-Invece di inviarli solo su STDOUT o un file, possono essere aggiunti degli *appender* come il `logstash-logback-encoder`: questo permette di inviare i log in formato JSON a Logstash (sia in modalità TCP che UDP). Logstash dovrà quindi essere configurato per esporre un endpoint (su `5044`) a cui inviare log tu TCP in fomrato JSON:
+Invece di inviare i log solo su STDOUT o un file, altre modalità possono essere aggiunte tramite degli *appender* come il `logstash-logback-encoder`: questo permette di inviare i log in formato JSON a Logstash (sia in modalità TCP che UDP). Logstash dovrà quindi essere configurato per esporre un endpoint (su `5044`) a cui inviare log tu TCP in fomrato JSON:
 
 ```text
 input {
